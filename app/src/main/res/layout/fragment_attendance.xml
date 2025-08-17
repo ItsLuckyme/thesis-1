@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/attendanceRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Top bar container to host camera and save button -->
+    <RelativeLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="8dp">
+
+        <!-- Camera Button (TOP RIGHT) -->
+
+        <!-- Keep your existing Save button ID -->
+        <Button
+            android:id="@+id/btnSaveAttendance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_marginTop="29dp"
+            android:layout_marginEnd="9dp"
+            android:layout_toStartOf="@id/btnCamera"
+            android:text="save" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="177dp"
+            android:layout_height="49dp"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="38dp"
+            android:layout_marginEnd="50dp"
+            android:layout_toStartOf="@+id/btnSaveAttendance"
+            android:text="Mark Attendance"
+            android:textAlignment="center"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btnCamera"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="31dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="scan_faces"
+            android:src="@android:drawable/ic_menu_camera" />
+    </RelativeLayout>
+
+    <!-- RecyclerView for students list (kept same id) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewAttendance"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:padding="8dp" />
+
+</RelativeLayout>
+

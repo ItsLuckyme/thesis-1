@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">LoginAndSignUp</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="select_grade_section">Select Grade and Section</string>
+    <string name="proceed">Record Attendance</string>
+    <string name="delete_attendance">Delete attendance</string>
+
+    <string-array name="grades_array">
+        <item>Grade 1</item>
+        <item>Grade 2</item>
+        <item>Grade 3</item>
+        <item>Grade 4</item>
+        <item>Grade 5</item>
+        <item>Grade 6</item>
+    </string-array>
+
+    <string-array name="sections_array">
+        <item>A</item>
+        <item>B</item>
+        <item>C</item>
+        <item>D</item>
+    </string-array>
+
+</resources>

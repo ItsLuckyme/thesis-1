@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "235521924699",
+    "project_id": "raw-pesms",
+    "storage_bucket": "raw-pesms.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:235521924699:android:862f7ea86dcdddfe4fa97e",
+        "android_client_info": {
+          "package_name": "com.example.raw_pesms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxt0w21EtZ5RmsU36HnAhAtyLYsnmfebQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

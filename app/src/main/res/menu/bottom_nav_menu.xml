@@ -1,0 +1,18 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/homeFragment"
+        android:icon="@drawable/ic_home"
+        android:title="Home" />
+
+    <item
+        android:id="@+id/addStudentFragment"
+        android:icon="@drawable/ic_add"
+        android:title="Add" />
+
+    <item
+        android:id="@+id/selectGradeSectionFragment"
+        android:icon="@drawable/ic_gradeclass"
+        android:title="Grade and Section" />
+</menu>

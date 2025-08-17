@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <!-- Home Fragment -->
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.raw_pesms.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_home">
+
+        <action
+            android:id="@+id/action_homeFragment_to_homeFragment"
+            app:destination="@id/homeFragment" />
+
+        <!-- Navigate to AttendanceFragment -->
+        <action
+            android:id="@+id/action_homeFragment_to_selectClassFragment"
+            app:destination="@id/selectClassFragment" />
+
+        <!-- Navigate to AttendanceHistoryFragment -->
+        <action
+            android:id="@+id/action_homeFragment_to_attendanceHistoryFragment"
+            app:destination="@id/attendanceHistoryFragment" />
+
+        <!-- Navigate to AddStudentFragment -->
+        <action
+            android:id="@+id/action_homeFragment_to_addStudentFragment"
+            app:destination="@id/addStudentFragment" />
+
+        <!-- Navigate to SelectGradeAndSection -->
+        <action
+            android:id="@+id/action_homeFragment_to_selectGradeSectionFragment"
+            app:destination="@id/action_addStudentFragment_to_homeFragment" />
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/selectClassFragment"
+        android:name="com.example.raw_pesms.SelectClassFragment"
+        tools:layout="@layout/fragment_select_class">
+
+        <action
+            android:id="@+id/action_selectClassFragment_to_attendanceFragment"
+            app:destination="@id/attendanceFragment"/>
+        <action
+            android:id="@+id/action_selectClassFragment_to_studentListFragment"
+            app:destination="@id/studentListFragment" />
+    </fragment>
+
+    <!-- Attendance Fragment -->
+    <fragment
+        android:id="@+id/attendanceFragment"
+        android:name="com.example.raw_pesms.UI.attendance.AttendanceFragment"
+        android:label="Attendance"
+        tools:layout="@layout/fragment_attendance">
+        <argument
+            android:name="grade"
+            app:argType="string"/>
+        <argument
+            android:name="section"
+            app:argType="string"/>
+        <action
+            android:id="@+id/action_attendanceFragment_to_attendanceHistoryFragment"
+            app:destination="@id/studentListFragment" />
+    </fragment>
+
+    <!-- Attendance History Fragment -->
+    <fragment
+        android:id="@+id/attendanceHistoryFragment"
+        android:name="com.example.raw_pesms.UI.attendance.AttendanceHistoryFragment"
+        android:label="Attendance History"
+        tools:layout="@layout/fragment_attendance_history" >
+        <argument
+            android:name="actionType"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_attendanceHistoryFragment_to_attendanceFragment"
+            app:destination="@id/attendanceFragment" />
+        <action
+            android:id="@+id/action_attendanceHistoryFragment_to_historyListFragment"
+            app:destination="@id/historyListFragment" />
+    </fragment>
+
+    <!-- Add Student Fragment -->
+    <fragment
+        android:id="@+id/addStudentFragment"
+        android:name="com.example.raw_pesms.UI.student.AddStudentFragment"
+        android:label="Add Student"
+        tools:layout="@layout/fragment_add_student">
+
+        <action
+            android:id="@+id/action_addStudentFragment_to_homeFragment"
+            app:destination="@id/homeFragment" />
+
+        <!-- Add this action if you navigate from addStudentFragment to selectGradeSectionFragment -->
+        <action
+            android:id="@+id/action_addStudentFragment_to_selectGradeSectionFragment"
+            app:destination="@id/selectGradeSectionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/selectGradeSectionFragment"
+        android:name="com.example.raw_pesms.SelectGradeSectionFragment"
+        android:label="Select Grade and Section"
+        tools:layout="@layout/fragment_select_grade_section">
+        <action
+            android:id="@+id/action_selectGradeSectionFragment_to_homeFragment"
+            app:destination="@id/homeFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/studentListFragment"
+        android:name="com.example.raw_pesms.UI.student.StudentListFragment"
+        android:label="Student List"
+        tools:layout="@layout/fragment_student_list" />
+
+    <fragment
+        android:id="@+id/historyFilterFragment"
+        android:name="com.example.raw_pesms.HistoryFilterFragment"
+        tools:layout="@layout/fragment_attendance_filter"
+        android:label="History Filter">
+        <action
+            android:id="@+id/action_historyFilterFragment_to_historyListFragment"
+            app:destination="@id/historyListFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/historyListFragment"
+        android:name="com.example.raw_pesms.HistoryListFragment"
+        android:label="History List"
+        tools:layout="@layout/fragment_attendance_history_list" />
+</navigation>
