@@ -168,11 +168,19 @@ class AttendanceFragment : Fragment() {
                 isSaving = false
                 if (isSuccess) {
                     Log.d("AttendanceFragment", "Attendance saved successfully")
-                    Toast.makeText(requireContext(), "Attendance saved successfully!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "Attendance saved successfully!",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     navigateToHistory()
                 } else {
                     Log.e("AttendanceFragment", "Failed to save attendance")
-                    Toast.makeText(requireContext(), "Failed to save attendance. Please try again.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "Failed to save attendance. Please try again.",
+                        Toast.LENGTH_LONG
+                    ).show()
                     resetSaveButton()
                 }
                 viewModel.clearSaveStatus()
@@ -196,7 +204,8 @@ class AttendanceFragment : Fragment() {
         Log.d("AttendanceFragment", "Setting up click listeners")
         btnSave.setOnClickListener {
             if (isSaving) {
-                Toast.makeText(requireContext(), "Save already in progress...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Save already in progress...", Toast.LENGTH_SHORT)
+                    .show()
                 return@setOnClickListener
             }
             if (grade == null || section == null) {
@@ -204,7 +213,10 @@ class AttendanceFragment : Fragment() {
                 return@setOnClickListener
             }
             viewModel.students.value?.takeIf { it.isNotEmpty() }?.let { studentsList ->
-                Log.d("AttendanceFragment", "Starting save process for $grade $section with ${studentsList.size} students")
+                Log.d(
+                    "AttendanceFragment",
+                    "Starting save process for $grade $section with ${studentsList.size} students"
+                )
                 isSaving = true
                 btnSave.isEnabled = false
                 btnSave.text = "Saving..."
@@ -213,13 +225,21 @@ class AttendanceFragment : Fragment() {
                     section?.let { s -> viewModel.saveAttendanceForClass(g, s) }
                 }
             } ?: run {
-                Toast.makeText(requireContext(), "No students to save attendance for", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "No students to save attendance for",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
         btnCamera.setOnClickListener {
             if (isRecognitionInProgress) {
-                Toast.makeText(requireContext(), "Face recognition in progress...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Face recognition in progress...",
+                    Toast.LENGTH_SHORT
+                ).show()
                 return@setOnClickListener
             }
 
@@ -227,12 +247,23 @@ class AttendanceFragment : Fragment() {
             val enrolledStudents = students?.filter { !it.faceEmbedding.isNullOrEmpty() }
             when {
                 students.isNullOrEmpty() ->
-                    Toast.makeText(requireContext(), "No students found in this class", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "No students found in this class",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
                 enrolledStudents.isNullOrEmpty() ->
-                    Toast.makeText(requireContext(), "No students have enrolled faces for recognition", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "No students have enrolled faces for recognition",
+                        Toast.LENGTH_LONG
+                    ).show()
+
                 ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) ==
                         PackageManager.PERMISSION_GRANTED ->
                     startFaceRecognition()
+
                 else ->
                     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
@@ -241,18 +272,30 @@ class AttendanceFragment : Fragment() {
     }
 
     private fun startFaceRecognition() {
-        Toast.makeText(requireContext(), "📸 Position students in the camera frame for recognition", Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            requireContext(),
+            "📸 Position students in the camera frame for recognition",
+            Toast.LENGTH_LONG
+        ).show()
         try {
             takePicture.launch(null)
         } catch (e: Exception) {
             Log.e("AttendanceFragment", "Error opening camera", e)
-            Toast.makeText(requireContext(), "Error opening camera: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                requireContext(),
+                "Error opening camera: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
     private fun handleFaceRecognitionResult(bitmap: Bitmap?) {
         if (bitmap == null) {
-            Toast.makeText(requireContext(), "No image captured. Please try again.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                "No image captured. Please try again.",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
@@ -260,8 +303,14 @@ class AttendanceFragment : Fragment() {
         when {
             students.isNullOrEmpty() ->
                 Toast.makeText(requireContext(), "No students found", Toast.LENGTH_SHORT).show()
+
             students.none { !it.faceEmbedding.isNullOrEmpty() } ->
-                Toast.makeText(requireContext(), "No enrolled faces found for recognition", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "No enrolled faces found for recognition",
+                    Toast.LENGTH_SHORT
+                ).show()
+
             else -> proceedWithRecognition(bitmap)
         }
     }
@@ -277,7 +326,11 @@ class AttendanceFragment : Fragment() {
                 Log.d("AttendanceFragment", "Starting face recognition process")
                 val detectedFaces = faceRecognitionManager.detectFaces(bitmap)
                 if (detectedFaces.isEmpty()) {
-                    Toast.makeText(requireContext(), "No faces detected in the image. Please try again with better lighting.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "No faces detected in the image. Please try again with better lighting.",
+                        Toast.LENGTH_LONG
+                    ).show()
                     resetRecognitionUI()
                     return@launch
                 }
@@ -286,39 +339,94 @@ class AttendanceFragment : Fragment() {
                 val recognizedStudents = mutableListOf<Student>()
                 val threshold = 0.6f
 
-                val enrolled = viewModel.students.value!!.filter { !it.faceEmbedding.isNullOrEmpty() }
+                val enrolled =
+                    viewModel.students.value!!.filter { !it.faceEmbedding.isNullOrEmpty() }
                 detectedFaces.forEach { detectedFace ->
                     faceRecognitionManager.embed(detectedFace)?.let { detectedEmbedding ->
                         var bestMatch: Student? = null
                         var bestSimilarity = 0f
                         enrolled.forEach { student ->
-                            student.faceEmbedding?.split(",")?.mapNotNull { it.toFloatOrNull() }?.toFloatArray()?.let { storedEmbedding ->
-                                if (storedEmbedding.size == detectedEmbedding.size) {
-                                    val similarity = calculateCosineSimilarity(detectedEmbedding, storedEmbedding)
-                                    Log.d("AttendanceFragment", "Similarity with ${student.firstName}: $similarity")
-                                    if (similarity > bestSimilarity && similarity > threshold) {
-                                        bestSimilarity = similarity
-                                        bestMatch = student
+                            student.faceEmbedding?.split(",")?.mapNotNull { it.toFloatOrNull() }
+                                ?.toFloatArray()?.let { storedEmbedding ->
+                                    if (storedEmbedding.size == detectedEmbedding.size) {
+                                        val similarity = calculateCosineSimilarity(
+                                            detectedEmbedding,
+                                            storedEmbedding
+                                        )
+                                        Log.d(
+                                            "AttendanceFragment",
+                                            "Similarity with ${student.firstName}: $similarity"
+                                        )
+                                        if (similarity > bestSimilarity && similarity > threshold) {
+                                            bestSimilarity = similarity
+                                            bestMatch = student
+                                        }
                                     }
                                 }
-                            }
                         }
-                        bestMatch?.takeIf { !recognizedStudents.contains(it) }?.also { recognizedStudents.add(it); Log.d("AttendanceFragment", "Recognized student: ${it.firstName} ${it.lastName} (similarity: $bestSimilarity)") }
+                        bestMatch?.takeIf { !recognizedStudents.contains(it) }?.also {
+                            recognizedStudents.add(it)
+                            Log.d(
+                                "AttendanceFragment",
+                                "Recognized student: ${it.firstName} ${it.lastName} (similarity: $bestSimilarity)"
+                            )
+                        }
                     }
                 }
 
                 if (recognizedStudents.isNotEmpty()) {
-                    recognizedStudents.forEach { viewModel.markAttendance(it.id, AttendanceStatus.PRESENT) }
-                    val names = recognizedStudents.joinToString(", ") { "${it.firstName} ${it.lastName}" }
-                    Toast.makeText(requireContext(), "✅ Recognized and marked present: $names", Toast.LENGTH_LONG).show()
-                    Log.d("AttendanceFragment", "Successfully recognized ${recognizedStudents.size} student(s)")
+                    recognizedStudents.forEach {
+                        viewModel.markAttendance(
+                            it.id,
+                            AttendanceStatus.PRESENT
+                        )
+                    }
+                    val names =
+                        recognizedStudents.joinToString(", ") { "${it.firstName} ${it.lastName}" }
+                    Toast.makeText(
+                        requireContext(),
+                        "✅ Recognized and marked present: $names",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    Log.d(
+                        "AttendanceFragment",
+                        "Successfully recognized ${recognizedStudents.size} student(s)"
+                    )
+
+                    // Add a small delay then trigger auto-save
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        // Trigger save automatically after face recognition
+                        if (!isSaving && grade != null && section != null) {
+                            viewModel.students.value?.takeIf { it.isNotEmpty() }
+                                ?.let { studentsList ->
+                                    Log.d(
+                                        "AttendanceFragment",
+                                        "Auto-saving after face recognition"
+                                    )
+                                    isSaving = true
+                                    btnSave.isEnabled = false
+                                    btnSave.text = "Saving..."
+                                    setupSaveTimeout()
+                                    viewModel.saveAttendanceForClass(grade!!, section!!)
+                                }
+                        }
+                    }, 1000) // 1 second delay
+
                 } else {
-                    Toast.makeText(requireContext(), "❌ No enrolled students recognized in the image. Make sure students are clearly visible.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "❌ No enrolled students recognized in the image. Make sure students are clearly visible.",
+                        Toast.LENGTH_LONG
+                    ).show()
                     Log.d("AttendanceFragment", "No students were recognized")
                 }
             } catch (e: Exception) {
                 Log.e("AttendanceFragment", "Error during face recognition", e)
-                Toast.makeText(requireContext(), "Error during face recognition: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Error during face recognition: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             } finally {
                 resetRecognitionUI()
             }
@@ -327,7 +435,9 @@ class AttendanceFragment : Fragment() {
 
     private fun calculateCosineSimilarity(embedding1: FloatArray, embedding2: FloatArray): Float {
         if (embedding1.size != embedding2.size) return 0f
-        var dot = 0f; var norm1 = 0f; var norm2 = 0f
+        var dot = 0f
+        var norm1 = 0f
+        var norm2 = 0f
         embedding1.indices.forEach {
             dot += embedding1[it] * embedding2[it]
             norm1 += embedding1[it] * embedding1[it]
@@ -348,7 +458,11 @@ class AttendanceFragment : Fragment() {
         saveTimeoutRunnable = Runnable {
             if (isSaving) {
                 Log.w("AttendanceFragment", "Save operation timed out after 30 seconds")
-                Toast.makeText(requireContext(), "Save operation timed out. Please check your connection and try again.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Save operation timed out. Please check your connection and try again.",
+                    Toast.LENGTH_LONG
+                ).show()
                 isSaving = false
                 resetSaveButton()
                 viewModel.clearSaveStatus()
@@ -377,16 +491,13 @@ class AttendanceFragment : Fragment() {
                 Bundle().apply {
                     putString("grade", grade)
                     putString("section", section)
+                    putString("actionType", "history") // Add this to ensure proper navigation
                 }
             )
         } catch (e: Exception) {
             Log.e("AttendanceFragment", "Navigation error: ${e.message}")
-            Toast.makeText(requireContext(), "Navigation error: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(requireContext(), "Navigation error: ${e.message}", Toast.LENGTH_LONG)
+                .show()
         }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        cancelSaveTimeout()
     }
 }
