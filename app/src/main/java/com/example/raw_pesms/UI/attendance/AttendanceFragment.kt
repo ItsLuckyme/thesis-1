@@ -25,6 +25,7 @@ import com.example.raw_pesms.UI.AttendanceAdapter
 import com.example.raw_pesms.data.AI.FaceRecognitionManager
 import com.example.raw_pesms.data.model.AttendanceStatus
 import com.example.raw_pesms.data.model.Student
+import com.example.raw_pesms.data.model.SMSNotificationManager
 import com.example.raw_pesms.viewmodel.AttendanceViewModel
 import com.example.raw_pesms.viewmodel.AttendanceViewModelFactory
 import kotlinx.coroutines.launch
@@ -56,6 +57,8 @@ class AttendanceFragment : Fragment() {
     private var isSaving = false
     private var isRecognitionInProgress = false
 
+    private lateinit var smsManager: SMSNotificationManager
+
     private val viewModel: AttendanceViewModel by activityViewModels {
         AttendanceViewModelFactory(requireActivity().application)
     }
@@ -69,6 +72,24 @@ class AttendanceFragment : Fragment() {
             "Camera permission is required for face recognition",
             Toast.LENGTH_LONG
         ).show()
+    }
+
+    private val smsPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Toast.makeText(
+                requireContext(),
+                "SMS permission granted. Absent notifications will be sent to guardians.",
+                Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "SMS permission denied. Guardian notifications will not be sent.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     private val takePicture = registerForActivityResult(
@@ -85,6 +106,13 @@ class AttendanceFragment : Fragment() {
         }
         Log.d("AttendanceFragment", "onCreate: grade=$grade, section=$section")
         saveTimeoutHandler = Handler(Looper.getMainLooper())
+        smsManager = SMSNotificationManager(requireContext())
+
+        // Request SMS permission if not granted
+        if (!smsManager.checkSmsPermission()) {
+            smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+        }
+
         Log.d("AttendanceFragment", "AttendanceFragment created successfully")
     }
 
@@ -124,6 +152,24 @@ class AttendanceFragment : Fragment() {
                     "late" -> AttendanceStatus.LATE
                     else -> AttendanceStatus.ABSENT
                 }
+
+                // Check if student is being marked absent and send SMS
+                if (mapped == AttendanceStatus.ABSENT && student.attendanceStatus != AttendanceStatus.ABSENT) {
+                    grade?.let { g ->
+                        section?.let { s ->
+                            // Send SMS notification to hardcoded number
+                            lifecycleScope.launch {
+                                try {
+                                    sendAbsentSMSToNumber(student, g, s, "09561955224")
+                                    Log.d("AttendanceFragment", "SMS sent for absent student: ${student.firstName}")
+                                } catch (e: Exception) {
+                                    Log.e("AttendanceFragment", "Failed to send SMS for ${student.firstName}", e)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 viewModel.markAttendance(student.id, mapped)
                 Log.d("AttendanceFragment", "Marked ${student.firstName} as $mapped")
             },
@@ -168,6 +214,10 @@ class AttendanceFragment : Fragment() {
                 isSaving = false
                 if (isSuccess) {
                     Log.d("AttendanceFragment", "Attendance saved successfully")
+
+                    // Send SMS notifications to guardians of absent students
+                    sendAbsentNotifications()
+
                     Toast.makeText(
                         requireContext(),
                         "Attendance saved successfully!",
@@ -319,8 +369,21 @@ class AttendanceFragment : Fragment() {
         isRecognitionInProgress = true
         btnCamera.isEnabled = false
         progressBar?.visibility = View.VISIBLE
-        val faceRecognitionManager = FaceRecognitionManager(requireContext())
 
+        val faceRecognitionManager = try {
+            FaceRecognitionManager(requireContext())
+        } catch (e: Exception) {
+            Log.e("AttendanceFragment", "Failed to initialize FaceRecognitionManager", e)
+            Toast.makeText(
+                requireContext(),
+                "Face recognition setup failed: ${e.message}. Please ensure facenet.tflite is in assets folder.",
+                Toast.LENGTH_LONG
+            ).show()
+            resetRecognitionUI()
+            return
+        }
+
+        // Remove the isModelReady() check and proceed directly with face detection
         lifecycleScope.launch {
             try {
                 Log.d("AttendanceFragment", "Starting face recognition process")
@@ -498,6 +561,69 @@ class AttendanceFragment : Fragment() {
             Log.e("AttendanceFragment", "Navigation error: ${e.message}")
             Toast.makeText(requireContext(), "Navigation error: ${e.message}", Toast.LENGTH_LONG)
                 .show()
+        }
+    }
+
+    private fun sendAbsentNotifications() {
+        if (!smsManager.checkSmsPermission()) {
+            Log.w("AttendanceFragment", "SMS permission not granted, skipping notifications")
+            return
+        }
+
+        val students = viewModel.students.value ?: return
+        val absentStudents = students.filter { it.attendanceStatus == AttendanceStatus.ABSENT }
+
+        if (absentStudents.isNotEmpty() && grade != null && section != null) {
+            lifecycleScope.launch {
+                try {
+                    // Send SMS to hardcoded number for all absent students
+                    absentStudents.forEach { student ->
+                        sendAbsentSMSToNumber(student, grade!!, section!!, "09561955224")
+                    }
+                    Log.d("AttendanceFragment", "Sent SMS notifications for ${absentStudents.size} absent students")
+
+                    if (absentStudents.size > 0) {
+                        Toast.makeText(
+                            requireContext(),
+                            "📱 SMS notification sent for ${absentStudents.size} absent student(s)",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    Log.e("AttendanceFragment", "Failed to send SMS notifications", e)
+                    Toast.makeText(
+                        requireContext(),
+                        "SMS notification may have failed to send",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun sendAbsentSMSToNumber(student: Student, grade: String, section: String, phoneNumber: String) {
+        try {
+            val message = "ATTENDANCE ALERT: ${student.firstName} ${student.lastName} from Grade $grade - Section $section is ABSENT today. Please contact the school if needed."
+
+            if (smsManager.checkSmsPermission()) {
+                val smsService = requireContext().getSystemService(android.content.Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+                val smsManager = android.telephony.SmsManager.getDefault()
+
+                smsManager.sendTextMessage(
+                    phoneNumber,
+                    null,
+                    message,
+                    null,
+                    null
+                )
+
+                Log.d("AttendanceFragment", "SMS sent to $phoneNumber for student: ${student.firstName} ${student.lastName}")
+            } else {
+                Log.w("AttendanceFragment", "SMS permission not granted")
+            }
+        } catch (e: Exception) {
+            Log.e("AttendanceFragment", "Failed to send SMS to $phoneNumber", e)
+            throw e
         }
     }
 }

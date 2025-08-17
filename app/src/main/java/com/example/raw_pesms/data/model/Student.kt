@@ -10,6 +10,8 @@ data class Student(
     val ownerId: String = "",
     val faceEmbedding: String? = null,   // keep as comma-separated or base64 if you like
     val facePhoto: ByteArray? = null,
+    val guardianPhoneNumber: String? = null, // Add this field
+    val guardianName: String? = null,
     val attendanceStatus: AttendanceStatus = AttendanceStatus.ABSENT // optional (store in Storage if large)
 ) {
     fun fullName(): String = if (middleInitial.isNullOrBlank()) {
