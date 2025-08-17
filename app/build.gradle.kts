@@ -98,8 +98,15 @@ dependencies {
     implementation("com.google.mlkit:face-detection:16.1.6")
 
     // TensorFlow Lite
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite:2.13.0")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+// Optional: GPU acceleration (if you want better performance)
+// implementation("org.tensorflow:tensorflow-lite-gpu:2.13.0")
+
+// Firebase (you probably already have these)
+    implementation(platform("com.google.firebase:firebase-bom:32.3.1"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+
 }

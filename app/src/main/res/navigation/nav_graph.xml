@@ -59,13 +59,15 @@
         tools:layout="@layout/fragment_attendance">
         <argument
             android:name="grade"
-            app:argType="string"/>
+            app:argType="string"
+            app:nullable="true"/>
         <argument
             android:name="section"
-            app:argType="string"/>
+            app:argType="string"
+            app:nullable="true"/>
         <action
             android:id="@+id/action_attendanceFragment_to_attendanceHistoryFragment"
-            app:destination="@id/studentListFragment" />
+            app:destination="@id/attendanceHistoryFragment" />
     </fragment>
 
     <!-- Attendance History Fragment -->
@@ -75,8 +77,17 @@
         android:label="Attendance History"
         tools:layout="@layout/fragment_attendance_history" >
         <argument
+            android:name="grade"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="section"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
             android:name="actionType"
-            app:argType="string" />
+            app:argType="string"
+            app:nullable="true" />
         <action
             android:id="@+id/action_attendanceHistoryFragment_to_attendanceFragment"
             app:destination="@id/attendanceFragment" />
@@ -116,7 +127,16 @@
         android:id="@+id/studentListFragment"
         android:name="com.example.raw_pesms.UI.student.StudentListFragment"
         android:label="Student List"
-        tools:layout="@layout/fragment_student_list" />
+        tools:layout="@layout/fragment_student_list">
+        <argument
+            android:name="grade"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="section"
+            app:argType="string"
+            app:nullable="true" />
+    </fragment>
 
     <fragment
         android:id="@+id/historyFilterFragment"
@@ -130,7 +150,7 @@
 
     <fragment
         android:id="@+id/historyListFragment"
-        android:name="com.example.raw_pesms.HistoryListFragment"
+        android:name="com.example.raw_pesms.UI.attendance.HistoryListFragment"
         android:label="History List"
         tools:layout="@layout/fragment_attendance_history_list" />
 </navigation>
