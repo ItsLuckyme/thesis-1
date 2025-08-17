@@ -2,6 +2,8 @@ package com.example.raw_pesms.UI.attendance
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.*
 import android.widget.Button
@@ -26,7 +28,9 @@ class AttendanceFragment : Fragment() {
 
     private var grade: String? = null
     private var section: String? = null
+    private var saveTimeoutHandler: Handler? = null
     private var saveTimeoutRunnable: Runnable? = null
+    private var isSaving = false
 
     private val viewModel: AttendanceViewModel by activityViewModels {
         AttendanceViewModelFactory(requireActivity().application)
@@ -35,7 +39,6 @@ class AttendanceFragment : Fragment() {
     private val takePicture =
         registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
             Toast.makeText(requireContext(), "AI Face Recognition placeholder invoked", Toast.LENGTH_SHORT).show()
-            // hook point for face recognition later
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,13 +48,15 @@ class AttendanceFragment : Fragment() {
             section = it.getString("section")
         }
         Log.d("AttendanceFragment", "onCreate: grade=$grade, section=$section")
+
+        // Initialize handler
+        saveTimeoutHandler = Handler(Looper.getMainLooper())
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         val v = inflater.inflate(R.layout.fragment_attendance, container, false)
-
         recyclerView = v.findViewById(R.id.recyclerViewAttendance)
         btnSave = v.findViewById(R.id.btnSaveAttendance)
 
@@ -74,11 +79,12 @@ class AttendanceFragment : Fragment() {
                 Log.d("AttendanceFragment", "Marked ${student.firstName} as $mapped")
             },
             onDeleteClicked = { student ->
-                if (grade != null && section != null) {
-                    viewModel.deleteStudent(grade!!, section!!, student.id) {
-                        Toast.makeText(requireContext(), "Deleted ${student.firstName}", Toast.LENGTH_SHORT).show()
-                        // Reload students after deletion
-                        viewModel.loadStudents(grade!!, section!!)
+                grade?.let { g ->
+                    section?.let { s ->
+                        viewModel.deleteStudent(g, s, student.id) {
+                            Toast.makeText(requireContext(), "Deleted ${student.firstName}", Toast.LENGTH_SHORT).show()
+                            viewModel.loadStudents(g, s)
+                        }
                     }
                 }
             }
@@ -89,40 +95,43 @@ class AttendanceFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        if (grade != null && section != null) {
-            viewModel.loadStudents(grade!!, section!!)
-
-            viewModel.students.observe(viewLifecycleOwner) { students ->
-                Log.d("AttendanceFragment", "Students loaded: ${students.size}")
-                adapter.submitList(students)
+        grade?.let { g ->
+            section?.let { s ->
+                viewModel.loadStudents(g, s)
             }
         }
 
-        // Observe save status instead of attendance data
+        viewModel.students.observe(viewLifecycleOwner) { students ->
+            Log.d("AttendanceFragment", "Students loaded: ${students.size}")
+            adapter.submitList(students)
+        }
+
         viewModel.saveStatus.observe(viewLifecycleOwner) { isSuccess ->
+            Log.d("AttendanceFragment", "Save status received: $isSuccess")
+
             if (isSuccess != null) {
                 cancelSaveTimeout()
+                isSaving = false
 
                 if (isSuccess) {
                     Log.d("AttendanceFragment", "Attendance saved successfully")
-                    Toast.makeText(requireContext(), "Attendance saved!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Attendance saved successfully!", Toast.LENGTH_SHORT).show()
                     navigateToHistory()
                 } else {
                     Log.e("AttendanceFragment", "Failed to save attendance")
                     Toast.makeText(requireContext(), "Failed to save attendance. Please try again.", Toast.LENGTH_LONG).show()
                     resetSaveButton()
                 }
-
-                // Clear the status to avoid repeated notifications
                 viewModel.clearSaveStatus()
             }
         }
 
-        // Also observe error messages
         viewModel.errorMessage.observe(viewLifecycleOwner) { errorMsg ->
             if (!errorMsg.isNullOrEmpty()) {
+                Log.e("AttendanceFragment", "Error received: $errorMsg")
                 cancelSaveTimeout()
-                Log.e("AttendanceFragment", "Error: $errorMsg")
+                isSaving = false
+
                 Toast.makeText(requireContext(), "Error: $errorMsg", Toast.LENGTH_LONG).show()
                 resetSaveButton()
                 viewModel.clearErrorMessage()
@@ -132,6 +141,11 @@ class AttendanceFragment : Fragment() {
 
     private fun setupClickListeners(view: View) {
         btnSave.setOnClickListener {
+            if (isSaving) {
+                Toast.makeText(requireContext(), "Save already in progress...", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             if (grade == null || section == null) {
                 Toast.makeText(requireContext(), "Grade/Section missing", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -143,17 +157,20 @@ class AttendanceFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            Log.d("AttendanceFragment", "Saving attendance for $grade $section")
+            Log.d("AttendanceFragment", "Starting save process for $grade $section with ${studentsList.size} students")
 
-            // Disable button to prevent multiple clicks
+            isSaving = true
             btnSave.isEnabled = false
             btnSave.text = "Saving..."
 
-            // Set up timeout mechanism
-            setupSaveTimeout(view)
+            setupSaveTimeout()
 
-            // Save attendance
-            viewModel.saveAttendanceForClass(grade!!, section!!)
+            // Call ViewModel function; it handles batch saving internally
+            grade?.let { g ->
+                section?.let { s ->
+                    viewModel.saveAttendanceForClass(g, s)
+                }
+            }
         }
 
         view.findViewById<View>(R.id.btnCamera)?.setOnClickListener {
@@ -161,20 +178,33 @@ class AttendanceFragment : Fragment() {
         }
     }
 
-    private fun setupSaveTimeout(view: View) {
+    private fun setupSaveTimeout() {
+        cancelSaveTimeout() // Clear any existing timeout
+
         saveTimeoutRunnable = Runnable {
-            if (!btnSave.isEnabled) {
-                Log.w("AttendanceFragment", "Save operation timed out")
-                Toast.makeText(requireContext(), "Save operation taking longer than expected. Please check your connection and try again.", Toast.LENGTH_LONG).show()
+            if (isSaving) {
+                Log.w("AttendanceFragment", "Save operation timed out after 30 seconds")
+                Toast.makeText(
+                    requireContext(),
+                    "Save operation timed out. Please check your connection and try again.",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                isSaving = false
                 resetSaveButton()
+
+                // Clear the ViewModel states to prevent stale data
+                viewModel.clearSaveStatus()
+                viewModel.clearErrorMessage()
             }
         }
-        view.postDelayed(saveTimeoutRunnable, 15000) // Increased to 15 seconds
+
+        saveTimeoutHandler?.postDelayed(saveTimeoutRunnable!!, 30000) // 30 second timeout
     }
 
     private fun cancelSaveTimeout() {
         saveTimeoutRunnable?.let { runnable ->
-            view?.removeCallbacks(runnable)
+            saveTimeoutHandler?.removeCallbacks(runnable)
             saveTimeoutRunnable = null
         }
     }
@@ -186,7 +216,6 @@ class AttendanceFragment : Fragment() {
 
     private fun navigateToHistory() {
         resetSaveButton()
-
         val bundle = Bundle().apply {
             putString("grade", grade)
             putString("section", section)
@@ -194,10 +223,7 @@ class AttendanceFragment : Fragment() {
         }
 
         try {
-            findNavController().navigate(
-                R.id.action_attendanceFragment_to_attendanceHistoryFragment,
-                bundle
-            )
+            findNavController().navigate(R.id.action_attendanceFragment_to_attendanceHistoryFragment, bundle)
         } catch (e: Exception) {
             Log.e("AttendanceFragment", "Navigation error", e)
             Toast.makeText(requireContext(), "Navigation error", Toast.LENGTH_SHORT).show()
@@ -207,5 +233,16 @@ class AttendanceFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         cancelSaveTimeout()
+        saveTimeoutHandler = null
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Reset states when fragment is paused
+        if (isSaving) {
+            cancelSaveTimeout()
+            isSaving = false
+            resetSaveButton()
+        }
     }
 }
