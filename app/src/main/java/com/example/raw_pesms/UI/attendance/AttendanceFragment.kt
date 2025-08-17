@@ -108,7 +108,6 @@ class AttendanceFragment : Fragment() {
         saveTimeoutHandler = Handler(Looper.getMainLooper())
         smsManager = SMSNotificationManager(requireContext())
 
-        // Request SMS permission if not granted
         if (!smsManager.checkSmsPermission()) {
             smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
         }
@@ -124,7 +123,7 @@ class AttendanceFragment : Fragment() {
         recyclerView = view.findViewById(R.id.recyclerViewAttendance)
         btnSave = view.findViewById(R.id.btnSaveAttendance)
         btnCamera = view.findViewById(R.id.btnCamera)
-        progressBar = view.findViewById<ProgressBar>(R.id.progressBar) ?: run {
+        progressBar = view.findViewById(R.id.progressBar) ?: run {
             ProgressBar(requireContext()).apply {
                 visibility = View.GONE
                 isIndeterminate = true
@@ -136,15 +135,12 @@ class AttendanceFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d("AttendanceFragment", "onViewCreated called")
         setupRecyclerView()
         setupObservers()
         setupClickListeners()
-        Log.d("AttendanceFragment", "Setup completed successfully")
     }
 
     private fun setupRecyclerView() {
-        Log.d("AttendanceFragment", "Setting up RecyclerView")
         adapter = AttendanceAdapter(
             onStatusChanged = { student, status ->
                 val mapped = when (status.lowercase()) {
@@ -152,8 +148,6 @@ class AttendanceFragment : Fragment() {
                     "late" -> AttendanceStatus.LATE
                     else -> AttendanceStatus.ABSENT
                 }
-
-                // Send SMS for all statuses (Present, Late, Absent)
                 grade?.let { g ->
                     section?.let { s ->
                         lifecycleScope.launch {
@@ -166,9 +160,7 @@ class AttendanceFragment : Fragment() {
                         }
                     }
                 }
-
                 viewModel.markAttendance(student.id, mapped)
-                Log.d("AttendanceFragment", "Marked ${student.firstName} as $mapped")
             },
             onDeleteClicked = { student ->
                 grade?.let { g ->
@@ -187,30 +179,22 @@ class AttendanceFragment : Fragment() {
         )
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
-        Log.d("AttendanceFragment", "RecyclerView setup completed")
     }
 
     private fun setupObservers() {
-        Log.d("AttendanceFragment", "Setting up observers")
         grade?.let { g ->
             section?.let { s ->
-                Log.d("AttendanceFragment", "Loading students for grade: $g, section: $s")
                 viewModel.loadStudents(g, s)
             }
         }
-
         viewModel.students.observe(viewLifecycleOwner) { students ->
-            Log.d("AttendanceFragment", "Students loaded: ${students.size}")
             adapter.submitList(students)
         }
-
         viewModel.saveStatus.observe(viewLifecycleOwner) { isSuccess ->
-            Log.d("AttendanceFragment", "Save status received: $isSuccess")
             if (isSuccess != null) {
                 cancelSaveTimeout()
                 isSaving = false
                 if (isSuccess) {
-                    Log.d("AttendanceFragment", "Attendance saved successfully")
                     Toast.makeText(
                         requireContext(),
                         "Attendance saved successfully!",
@@ -218,7 +202,6 @@ class AttendanceFragment : Fragment() {
                     ).show()
                     navigateToHistory()
                 } else {
-                    Log.e("AttendanceFragment", "Failed to save attendance")
                     Toast.makeText(
                         requireContext(),
                         "Failed to save attendance. Please try again.",
@@ -229,10 +212,8 @@ class AttendanceFragment : Fragment() {
                 viewModel.clearSaveStatus()
             }
         }
-
         viewModel.errorMessage.observe(viewLifecycleOwner) { errorMsg ->
             if (!errorMsg.isNullOrEmpty()) {
-                Log.e("AttendanceFragment", "Error received: $errorMsg")
                 cancelSaveTimeout()
                 isSaving = false
                 Toast.makeText(requireContext(), "Error: $errorMsg", Toast.LENGTH_LONG).show()
@@ -240,11 +221,9 @@ class AttendanceFragment : Fragment() {
                 viewModel.clearErrorMessage()
             }
         }
-        Log.d("AttendanceFragment", "Observers setup completed")
     }
 
     private fun setupClickListeners() {
-        Log.d("AttendanceFragment", "Setting up click listeners")
         btnSave.setOnClickListener {
             if (isSaving) {
                 Toast.makeText(requireContext(), "Save already in progress...", Toast.LENGTH_SHORT)
@@ -256,10 +235,6 @@ class AttendanceFragment : Fragment() {
                 return@setOnClickListener
             }
             viewModel.students.value?.takeIf { it.isNotEmpty() }?.let { studentsList ->
-                Log.d(
-                    "AttendanceFragment",
-                    "Starting save process for $grade $section with ${studentsList.size} students"
-                )
                 isSaving = true
                 btnSave.isEnabled = false
                 btnSave.text = "Saving..."
@@ -285,7 +260,6 @@ class AttendanceFragment : Fragment() {
                 ).show()
                 return@setOnClickListener
             }
-
             val students = viewModel.students.value
             val enrolledStudents = students?.filter { !it.faceEmbedding.isNullOrEmpty() }
             when {
@@ -295,23 +269,19 @@ class AttendanceFragment : Fragment() {
                         "No students found in this class",
                         Toast.LENGTH_SHORT
                     ).show()
-
                 enrolledStudents.isNullOrEmpty() ->
                     Toast.makeText(
                         requireContext(),
                         "No students have enrolled faces for recognition",
                         Toast.LENGTH_LONG
                     ).show()
-
                 ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) ==
                         PackageManager.PERMISSION_GRANTED ->
                     startFaceRecognition()
-
                 else ->
                     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
         }
-        Log.d("AttendanceFragment", "Click listeners setup completed")
     }
 
     private fun startFaceRecognition() {
@@ -323,7 +293,6 @@ class AttendanceFragment : Fragment() {
         try {
             takePicture.launch(null)
         } catch (e: Exception) {
-            Log.e("AttendanceFragment", "Error opening camera", e)
             Toast.makeText(
                 requireContext(),
                 "Error opening camera: ${e.message}",
@@ -341,19 +310,16 @@ class AttendanceFragment : Fragment() {
             ).show()
             return
         }
-
         val students = viewModel.students.value
         when {
             students.isNullOrEmpty() ->
                 Toast.makeText(requireContext(), "No students found", Toast.LENGTH_SHORT).show()
-
             students.none { !it.faceEmbedding.isNullOrEmpty() } ->
                 Toast.makeText(
                     requireContext(),
                     "No enrolled faces found for recognition",
                     Toast.LENGTH_SHORT
                 ).show()
-
             else -> proceedWithRecognition(bitmap)
         }
     }
@@ -366,10 +332,9 @@ class AttendanceFragment : Fragment() {
         val faceRecognitionManager = try {
             FaceRecognitionManager(requireContext())
         } catch (e: Exception) {
-            Log.e("AttendanceFragment", "Failed to initialize FaceRecognitionManager", e)
             Toast.makeText(
                 requireContext(),
-                "Face recognition setup failed: ${e.message}. Please ensure facenet.tflite is in assets folder.",
+                "Face recognition setup failed: ${e.message}.",
                 Toast.LENGTH_LONG
             ).show()
             resetRecognitionUI()
@@ -378,7 +343,6 @@ class AttendanceFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("AttendanceFragment", "Starting face recognition process")
                 val detectedFaces = faceRecognitionManager.detectFaces(bitmap)
                 if (detectedFaces.isEmpty()) {
                     Toast.makeText(
@@ -389,13 +353,11 @@ class AttendanceFragment : Fragment() {
                     resetRecognitionUI()
                     return@launch
                 }
-                Log.d("AttendanceFragment", "Detected ${detectedFaces.size} face(s)")
 
                 val recognizedStudents = mutableListOf<Student>()
                 val threshold = 0.6f
+                val enrolled = viewModel.students.value!!.filter { !it.faceEmbedding.isNullOrEmpty() }
 
-                val enrolled =
-                    viewModel.students.value!!.filter { !it.faceEmbedding.isNullOrEmpty() }
                 detectedFaces.forEach { detectedFace ->
                     faceRecognitionManager.embed(detectedFace)?.let { detectedEmbedding ->
                         var bestMatch: Student? = null
@@ -408,10 +370,6 @@ class AttendanceFragment : Fragment() {
                                             detectedEmbedding,
                                             storedEmbedding
                                         )
-                                        Log.d(
-                                            "AttendanceFragment",
-                                            "Similarity with ${student.firstName}: $similarity"
-                                        )
                                         if (similarity > bestSimilarity && similarity > threshold) {
                                             bestSimilarity = similarity
                                             bestMatch = student
@@ -421,53 +379,49 @@ class AttendanceFragment : Fragment() {
                         }
                         bestMatch?.takeIf { !recognizedStudents.contains(it) }?.also {
                             recognizedStudents.add(it)
-                            Log.d(
-                                "AttendanceFragment",
-                                "Recognized student: ${it.firstName} ${it.lastName} (similarity: $bestSimilarity)"
-                            )
                         }
                     }
                 }
 
+                val allStudents = viewModel.students.value ?: emptyList()
+
                 if (recognizedStudents.isNotEmpty()) {
                     recognizedStudents.forEach { student ->
                         viewModel.markAttendance(student.id, AttendanceStatus.PRESENT)
-
-                        // ✅ Send SMS for recognized student
                         grade?.let { g ->
                             section?.let { s ->
                                 lifecycleScope.launch {
-                                    try {
-                                        val guardianPhone = student.guardianPhone ?: "09561955224"
-                                        sendAttendanceSMSToNumber(student, g, s, guardianPhone, AttendanceStatus.PRESENT)
-                                    } catch (e: Exception) {
-                                        Log.e("AttendanceFragment", "Failed to send SMS for ${student.firstName}", e)
-                                    }
+                                    val guardianPhone = student.guardianPhone ?: "09561955224"
+                                    sendAttendanceSMSToNumber(student, g, s, guardianPhone, AttendanceStatus.PRESENT)
                                 }
                             }
                         }
                     }
 
-                    val names =
-                        recognizedStudents.joinToString(", ") { "${it.firstName} ${it.lastName}" }
+                    val absentStudents = allStudents.filterNot { recognizedStudents.contains(it) }
+                    absentStudents.forEach { student ->
+                        viewModel.markAttendance(student.id, AttendanceStatus.ABSENT)
+                        grade?.let { g ->
+                            section?.let { s ->
+                                lifecycleScope.launch {
+                                    val guardianPhone = student.guardianPhone ?: "09561955224"
+                                    sendAttendanceSMSToNumber(student, g, s, guardianPhone, AttendanceStatus.ABSENT)
+                                }
+                            }
+                        }
+                    }
+
+                    val names = recognizedStudents.joinToString(", ") { "${it.firstName} ${it.lastName}" }
                     Toast.makeText(
                         requireContext(),
-                        "✅ Recognized and marked present: $names",
+                        "✅ Recognized: $names\nAbsent marked for others.",
                         Toast.LENGTH_LONG
                     ).show()
-                    Log.d(
-                        "AttendanceFragment",
-                        "Successfully recognized ${recognizedStudents.size} student(s)"
-                    )
 
                     Handler(Looper.getMainLooper()).postDelayed({
                         if (!isSaving && grade != null && section != null) {
                             viewModel.students.value?.takeIf { it.isNotEmpty() }
                                 ?.let {
-                                    Log.d(
-                                        "AttendanceFragment",
-                                        "Auto-saving after face recognition"
-                                    )
                                     isSaving = true
                                     btnSave.isEnabled = false
                                     btnSave.text = "Saving..."
@@ -480,13 +434,11 @@ class AttendanceFragment : Fragment() {
                 } else {
                     Toast.makeText(
                         requireContext(),
-                        "❌ No enrolled students recognized in the image. Make sure students are clearly visible.",
+                        "❌ No enrolled students recognized in the image.",
                         Toast.LENGTH_LONG
                     ).show()
-                    Log.d("AttendanceFragment", "No students were recognized")
                 }
             } catch (e: Exception) {
-                Log.e("AttendanceFragment", "Error during face recognition", e)
                 Toast.makeText(
                     requireContext(),
                     "Error during face recognition: ${e.message}",
@@ -522,7 +474,6 @@ class AttendanceFragment : Fragment() {
         cancelSaveTimeout()
         saveTimeoutRunnable = Runnable {
             if (isSaving) {
-                Log.w("AttendanceFragment", "Save operation timed out after 30 seconds")
                 Toast.makeText(
                     requireContext(),
                     "Save operation timed out. Please check your connection and try again.",
@@ -560,7 +511,6 @@ class AttendanceFragment : Fragment() {
                 }
             )
         } catch (e: Exception) {
-            Log.e("AttendanceFragment", "Navigation error: ${e.message}")
             Toast.makeText(requireContext(), "Navigation error: ${e.message}", Toast.LENGTH_LONG)
                 .show()
         }
@@ -585,9 +535,6 @@ class AttendanceFragment : Fragment() {
                     null,
                     null
                 )
-                Log.d("AttendanceFragment", "SMS sent to $phoneNumber for student: ${student.firstName} ${student.lastName} - Status: $statusText")
-            } else {
-                Log.w("AttendanceFragment", "SMS permission not granted")
             }
         } catch (e: Exception) {
             Log.e("AttendanceFragment", "Failed to send SMS to $phoneNumber", e)
