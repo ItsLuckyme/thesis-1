@@ -64,7 +64,26 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             .get()
             .addOnSuccessListener { snap ->
                 val list = snap.documents.mapNotNull { doc ->
-                    doc.toObject(Student::class.java)?.copy(id = doc.id)
+                    try {
+                        Student(
+                            id = doc.id,
+                            firstName = doc.getString("firstName") ?: "",
+                            middleInitial = doc.getString("middleInitial") ?: "",
+                            lastName = doc.getString("lastName") ?: "",
+                            guardianPhone = doc.getString("guardianPhone"), // ✅ ensure guardian phone is loaded
+                            grade = doc.getString("grade") ?: "",
+                            section = doc.getString("section") ?: "",
+                            faceEmbedding = doc.getString("faceEmbedding"),
+                            faceImagePath = doc.getString("faceImagePath"),
+                            attendanceStatus = AttendanceStatus.ABSENT, // default
+                            ownerId = doc.getString("ownerId") ?: "",
+                            faceEnrolled = doc.getBoolean("faceEnrolled") ?: false,
+                            createdAt = doc.getTimestamp("createdAt")
+                        )
+                    } catch (e: Exception) {
+                        Log.e("AttendanceVM", "Error mapping student: ${doc.id}", e)
+                        null
+                    }
                 }
                 _students.postValue(list)
             }
@@ -149,7 +168,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                         val record = AttendanceRecord(
                             id = attRef.id,
                             studentId = student.id,
-                            studentName = student.fullName(),
+                            studentName = student.getFullName(),
                             grade = grade,
                             section = section,
                             status = student.attendanceStatus?.name ?: AttendanceStatus.ABSENT.name,
@@ -160,19 +179,17 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                     }
 
                     try {
-                        // Add timeout handling for individual batches
                         batch.commit().await()
                         Log.d("AttendanceVM", "Batch ${index + 1}/${chunks.size} saved successfully")
                     } catch (batchException: Exception) {
                         Log.e("AttendanceVM", "Error saving batch ${index + 1}: ${batchException.message}")
-                        throw batchException // Re-throw to be caught by outer try-catch
+                        throw batchException
                     }
                 }
 
                 Log.d("AttendanceVM", "All batches saved successfully")
-                _saveStatus.postValue(true) // Success!
+                _saveStatus.postValue(true)
 
-                // Load attendance after successful save
                 loadAttendanceForClass(grade, section)
 
             } catch (e: Exception) {

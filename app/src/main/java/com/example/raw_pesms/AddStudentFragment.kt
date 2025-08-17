@@ -24,6 +24,7 @@ class AddStudentFragment : Fragment() {
     private lateinit var firstNameInput: EditText
     private lateinit var middleInitialInput: EditText
     private lateinit var lastNameInput: EditText
+    private lateinit var guardianPhoneInput: EditText
     private lateinit var gradeSpinner: Spinner
     private lateinit var sectionSpinner: Spinner
     private lateinit var addButton: Button
@@ -65,6 +66,7 @@ class AddStudentFragment : Fragment() {
         firstNameInput = view.findViewById(R.id.editFirstName)
         middleInitialInput = view.findViewById(R.id.editMiddleInitial)
         lastNameInput = view.findViewById(R.id.editLastName)
+        guardianPhoneInput = view.findViewById(R.id.editGuardianPhone)
         gradeSpinner = view.findViewById(R.id.spinnerGrade)
         sectionSpinner = view.findViewById(R.id.spinnerSection)
         addButton = view.findViewById(R.id.btnAddStudent)
@@ -167,12 +169,24 @@ class AddStudentFragment : Fragment() {
         val first = firstNameInput.text.toString().trim()
         val mid = middleInitialInput.text.toString().trim()
         val last = lastNameInput.text.toString().trim()
+        val guardianPhone = guardianPhoneInput.text.toString().trim()
         val grade = selectedGrade
         val section = selectedSection
 
         // Validation
         if (first.isEmpty() || last.isEmpty()) {
             Toast.makeText(requireContext(), "First name and last name are required", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (guardianPhone.isEmpty()) {
+            Toast.makeText(requireContext(), "Guardian phone number is required", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Validate phone number format (Philippine format)
+        if (!isValidPhoneNumber(guardianPhone)) {
+            Toast.makeText(requireContext(), "Please enter a valid Philippine phone number (e.g., 09123456789)", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -196,6 +210,7 @@ class AddStudentFragment : Fragment() {
             "firstName" to first,
             "middleInitial" to mid,
             "lastName" to last,
+            "guardianPhone" to guardianPhone,
             "grade" to grade,
             "section" to section,
             "ownerId" to currentUser.uid,
@@ -232,6 +247,13 @@ class AddStudentFragment : Fragment() {
                 addButton.isEnabled = true
                 addButton.text = "Add Student"
             }
+    }
+
+    private fun isValidPhoneNumber(phone: String): Boolean {
+        // Philippine mobile number validation
+        // Format: 09xxxxxxxxx (11 digits starting with 09)
+        val phoneRegex = Regex("^09[0-9]{9}$")
+        return phoneRegex.matches(phone)
     }
 
     private fun startCameraForEnrollment() {
@@ -372,6 +394,7 @@ class AddStudentFragment : Fragment() {
         firstNameInput.text.clear()
         middleInitialInput.text.clear()
         lastNameInput.text.clear()
+        guardianPhoneInput.text.clear()
         gradeSpinner.setSelection(0)
         sectionSpinner.setSelection(0)
     }

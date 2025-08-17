@@ -80,7 +80,7 @@ class AttendanceFragment : Fragment() {
         if (isGranted) {
             Toast.makeText(
                 requireContext(),
-                "SMS permission granted. Absent notifications will be sent to guardians.",
+                "SMS permission granted. Notifications will be sent to guardians.",
                 Toast.LENGTH_SHORT
             ).show()
         } else {
@@ -153,18 +153,15 @@ class AttendanceFragment : Fragment() {
                     else -> AttendanceStatus.ABSENT
                 }
 
-                // Check if student is being marked absent and send SMS
-                if (mapped == AttendanceStatus.ABSENT && student.attendanceStatus != AttendanceStatus.ABSENT) {
-                    grade?.let { g ->
-                        section?.let { s ->
-                            // Send SMS notification to hardcoded number
-                            lifecycleScope.launch {
-                                try {
-                                    sendAbsentSMSToNumber(student, g, s, "09561955224")
-                                    Log.d("AttendanceFragment", "SMS sent for absent student: ${student.firstName}")
-                                } catch (e: Exception) {
-                                    Log.e("AttendanceFragment", "Failed to send SMS for ${student.firstName}", e)
-                                }
+                // Send SMS for all statuses (Present, Late, Absent)
+                grade?.let { g ->
+                    section?.let { s ->
+                        lifecycleScope.launch {
+                            try {
+                                val guardianPhone = student.guardianPhone ?: "09561955224"
+                                sendAttendanceSMSToNumber(student, g, s, guardianPhone, mapped)
+                            } catch (e: Exception) {
+                                Log.e("AttendanceFragment", "Failed to send SMS for ${student.firstName}", e)
                             }
                         }
                     }
@@ -214,10 +211,6 @@ class AttendanceFragment : Fragment() {
                 isSaving = false
                 if (isSuccess) {
                     Log.d("AttendanceFragment", "Attendance saved successfully")
-
-                    // Send SMS notifications to guardians of absent students
-                    sendAbsentNotifications()
-
                     Toast.makeText(
                         requireContext(),
                         "Attendance saved successfully!",
@@ -383,7 +376,6 @@ class AttendanceFragment : Fragment() {
             return
         }
 
-        // Remove the isModelReady() check and proceed directly with face detection
         lifecycleScope.launch {
             try {
                 Log.d("AttendanceFragment", "Starting face recognition process")
@@ -438,12 +430,24 @@ class AttendanceFragment : Fragment() {
                 }
 
                 if (recognizedStudents.isNotEmpty()) {
-                    recognizedStudents.forEach {
-                        viewModel.markAttendance(
-                            it.id,
-                            AttendanceStatus.PRESENT
-                        )
+                    recognizedStudents.forEach { student ->
+                        viewModel.markAttendance(student.id, AttendanceStatus.PRESENT)
+
+                        // ✅ Send SMS for recognized student
+                        grade?.let { g ->
+                            section?.let { s ->
+                                lifecycleScope.launch {
+                                    try {
+                                        val guardianPhone = student.guardianPhone ?: "09561955224"
+                                        sendAttendanceSMSToNumber(student, g, s, guardianPhone, AttendanceStatus.PRESENT)
+                                    } catch (e: Exception) {
+                                        Log.e("AttendanceFragment", "Failed to send SMS for ${student.firstName}", e)
+                                    }
+                                }
+                            }
+                        }
                     }
+
                     val names =
                         recognizedStudents.joinToString(", ") { "${it.firstName} ${it.lastName}" }
                     Toast.makeText(
@@ -456,12 +460,10 @@ class AttendanceFragment : Fragment() {
                         "Successfully recognized ${recognizedStudents.size} student(s)"
                     )
 
-                    // Add a small delay then trigger auto-save
                     Handler(Looper.getMainLooper()).postDelayed({
-                        // Trigger save automatically after face recognition
                         if (!isSaving && grade != null && section != null) {
                             viewModel.students.value?.takeIf { it.isNotEmpty() }
-                                ?.let { studentsList ->
+                                ?.let {
                                     Log.d(
                                         "AttendanceFragment",
                                         "Auto-saving after face recognition"
@@ -473,7 +475,7 @@ class AttendanceFragment : Fragment() {
                                     viewModel.saveAttendanceForClass(grade!!, section!!)
                                 }
                         }
-                    }, 1000) // 1 second delay
+                    }, 1000)
 
                 } else {
                     Toast.makeText(
@@ -554,7 +556,7 @@ class AttendanceFragment : Fragment() {
                 Bundle().apply {
                     putString("grade", grade)
                     putString("section", section)
-                    putString("actionType", "history") // Add this to ensure proper navigation
+                    putString("actionType", "history")
                 }
             )
         } catch (e: Exception) {
@@ -564,51 +566,18 @@ class AttendanceFragment : Fragment() {
         }
     }
 
-    private fun sendAbsentNotifications() {
-        if (!smsManager.checkSmsPermission()) {
-            Log.w("AttendanceFragment", "SMS permission not granted, skipping notifications")
-            return
-        }
-
-        val students = viewModel.students.value ?: return
-        val absentStudents = students.filter { it.attendanceStatus == AttendanceStatus.ABSENT }
-
-        if (absentStudents.isNotEmpty() && grade != null && section != null) {
-            lifecycleScope.launch {
-                try {
-                    // Send SMS to hardcoded number for all absent students
-                    absentStudents.forEach { student ->
-                        sendAbsentSMSToNumber(student, grade!!, section!!, "09561955224")
-                    }
-                    Log.d("AttendanceFragment", "Sent SMS notifications for ${absentStudents.size} absent students")
-
-                    if (absentStudents.size > 0) {
-                        Toast.makeText(
-                            requireContext(),
-                            "📱 SMS notification sent for ${absentStudents.size} absent student(s)",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } catch (e: Exception) {
-                    Log.e("AttendanceFragment", "Failed to send SMS notifications", e)
-                    Toast.makeText(
-                        requireContext(),
-                        "SMS notification may have failed to send",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
-    }
-
-    private fun sendAbsentSMSToNumber(student: Student, grade: String, section: String, phoneNumber: String) {
+    private fun sendAttendanceSMSToNumber(student: Student, grade: String, section: String, phoneNumber: String, status: AttendanceStatus) {
         try {
-            val message = "ATTENDANCE ALERT: ${student.firstName} ${student.lastName} from Grade $grade - Section $section is ABSENT today. Please contact the school if needed."
+            val statusText = when (status) {
+                AttendanceStatus.PRESENT -> "PRESENT"
+                AttendanceStatus.LATE -> "LATE"
+                AttendanceStatus.ABSENT -> "ABSENT"
+            }
+
+            val message = "ATTENDANCE UPDATE: ${student.firstName} ${student.lastName} from Grade $grade - Section $section is marked as $statusText."
 
             if (smsManager.checkSmsPermission()) {
-                val smsService = requireContext().getSystemService(android.content.Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
                 val smsManager = android.telephony.SmsManager.getDefault()
-
                 smsManager.sendTextMessage(
                     phoneNumber,
                     null,
@@ -616,8 +585,7 @@ class AttendanceFragment : Fragment() {
                     null,
                     null
                 )
-
-                Log.d("AttendanceFragment", "SMS sent to $phoneNumber for student: ${student.firstName} ${student.lastName}")
+                Log.d("AttendanceFragment", "SMS sent to $phoneNumber for student: ${student.firstName} ${student.lastName} - Status: $statusText")
             } else {
                 Log.w("AttendanceFragment", "SMS permission not granted")
             }

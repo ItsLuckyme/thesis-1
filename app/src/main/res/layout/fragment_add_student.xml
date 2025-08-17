@@ -9,6 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <!-- First Name -->
         <EditText
             android:id="@+id/editFirstName"
             android:layout_width="match_parent"
@@ -16,6 +17,7 @@
             android:hint="First Name"
             android:inputType="textPersonName" />
 
+        <!-- Middle Initial -->
         <EditText
             android:id="@+id/editMiddleInitial"
             android:layout_width="match_parent"
@@ -23,6 +25,7 @@
             android:hint="Middle Initial"
             android:inputType="textPersonName" />
 
+        <!-- Last Name -->
         <EditText
             android:id="@+id/editLastName"
             android:layout_width="match_parent"
@@ -30,18 +33,30 @@
             android:hint="Last Name"
             android:inputType="textPersonName" />
 
+        <!-- Guardian Phone Number -->
+        <EditText
+            android:id="@+id/editGuardianPhone"
+            android:layout_width="match_parent"
+            android:layout_height="71dp"
+            android:hint="Guardian Phone Number"
+            android:inputType="phone"
+            android:maxLength="11" />
+
+        <!-- Grade Spinner -->
         <Spinner
             android:id="@+id/spinnerGrade"
             android:layout_width="match_parent"
             android:layout_height="71dp"
             android:layout_marginTop="16dp" />
 
+        <!-- Section Spinner -->
         <Spinner
             android:id="@+id/spinnerSection"
             android:layout_width="match_parent"
             android:layout_height="71dp"
             android:layout_marginTop="16dp" />
 
+        <!-- Add Student Button -->
         <Button
             android:id="@+id/btnAddStudent"
             android:layout_width="match_parent"
@@ -49,12 +64,14 @@
             android:text="Add Student"
             android:layout_marginTop="24dp" />
 
+        <!-- Enroll Face Button -->
         <Button
             android:id="@+id/btnEnrollFace"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Enroll Face" />
 
+        <!-- Progress Bar -->
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="wrap_content"

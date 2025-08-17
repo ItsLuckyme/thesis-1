@@ -24,7 +24,7 @@ class SMSNotificationManager(private val context: Context) {
             return
         }
 
-        val guardianPhone = student.guardianPhoneNumber
+        val guardianPhone = student.guardianPhone
         if (guardianPhone.isNullOrBlank()) {
             Log.w(TAG, "No guardian phone number for ${student.firstName} ${student.lastName}")
             return
